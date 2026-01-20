@@ -10,7 +10,7 @@ import json
 app = FastAPI()
 
 # Model load (startup par ek baar)
-model = whisper.load_model("small")
+model = whisper.load_model("base")
 
 @app.get("/", response_class=HTMLResponse)
 def ui():
