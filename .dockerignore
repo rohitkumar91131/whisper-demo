@@ -1,7 +1,0 @@
-__pycache__/
-venv/
-.env
-.cache/
-.cache/whisper/
-.git
-.gitignore

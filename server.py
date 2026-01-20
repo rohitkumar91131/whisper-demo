@@ -9,7 +9,7 @@ import json
 
 app = FastAPI()
 
-# Model load (startup par ek baar)
+# Model load
 model = whisper.load_model("base")
 
 @app.get("/", response_class=HTMLResponse)
@@ -40,7 +40,7 @@ def ui():
     background: linear-gradient(135deg, #09090b, #111827, #1e1b4b);
     min-height: 100vh;
     color: var(--text);
-    padding: 20px;
+    padding: 15px; /* Reduced padding for mobile */
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -52,7 +52,7 @@ def ui():
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin-top: 40px;
+    margin-top: 20px;
   }
 
   /* --- Cards --- */
@@ -64,6 +64,7 @@ def ui():
     border-radius: 20px;
     padding: 30px;
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
   }
 
   h2 {
@@ -72,12 +73,16 @@ def ui():
     background: linear-gradient(to right, #fff, #a5f3fc);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-size: 28px;
+    font-size: clamp(24px, 5vw, 28px); /* Responsive Font Size */
     font-weight: 800;
   }
 
   /* --- Input Area --- */
-  .input-group { display: flex; gap: 10px; margin-bottom: 0; }
+  .input-group { 
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 0; 
+  }
   
   input {
     flex: 1;
@@ -89,6 +94,7 @@ def ui():
     font-size: 16px;
     outline: none;
     transition: 0.3s;
+    min-width: 0; /* Prevents overflow */
   }
   input:focus { border-color: var(--primary); background: rgba(0, 0, 0, 0.6); }
 
@@ -102,6 +108,7 @@ def ui():
     cursor: pointer;
     text-transform: uppercase;
     transition: transform 0.2s;
+    white-space: nowrap;
   }
   button:hover { transform: translateY(-2px); filter: brightness(1.1); }
   button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
@@ -118,7 +125,6 @@ def ui():
     justify-content: center;
   }
 
-  /* Default 16:9 for YouTube */
   .video-wrapper {
     position: relative;
     width: 100%;
@@ -126,11 +132,11 @@ def ui():
     height: 0;
   }
 
-  /* Vertical Mode for Instagram */
   .video-wrapper.vertical {
-    padding-bottom: 120%; /* Taller aspect ratio for Reels */
-    max-width: 400px;     /* Limit width so it doesn't look huge */
-    margin: 0 auto;       /* Center it */
+    padding-bottom: 125%; /* Taller for mobile screens */
+    width: 100%;
+    max-width: 450px;     
+    margin: 0 auto;       
   }
 
   .video-wrapper iframe {
@@ -156,8 +162,9 @@ def ui():
     height: 60px;
     object-fit: cover;
     border-radius: 8px;
+    flex-shrink: 0; /* Prevent shrinking */
   }
-  .meta-info h3 { margin: 0; font-size: 16px; line-height: 1.4; }
+  .meta-info h3 { margin: 0; font-size: 16px; line-height: 1.4; word-break: break-word; }
   .meta-info p { margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted); }
 
   /* --- Transcript Section --- */
@@ -165,7 +172,9 @@ def ui():
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap; /* Allow wrapping */
+    gap: 10px;
   }
   .transcript-title { font-weight: 600; color: var(--primary); }
   
@@ -176,6 +185,7 @@ def ui():
     font-size: 12px;
     border: 1px solid var(--glass-border);
     cursor: pointer;
+    border-radius: 8px;
   }
   .copy-btn:hover { background: rgba(255,255,255,0.2); transform: none; }
 
@@ -197,6 +207,39 @@ def ui():
   ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
   
   .loader { text-align: center; color: var(--primary); margin-top: 20px; display: none; }
+
+  /* --- MOBILE RESPONSIVE QUERIES --- */
+  @media (max-width: 600px) {
+    .card {
+      padding: 20px; /* Less padding on mobile */
+    }
+
+    .input-group {
+      flex-direction: column; /* Stack input and button */
+    }
+
+    button {
+      width: 100%; /* Full width button */
+    }
+
+    .meta-box {
+      flex-direction: column; /* Stack image and text */
+      text-align: center;
+    }
+    
+    .meta-thumb {
+      width: 100%;
+      height: 150px; /* Larger image on mobile */
+    }
+    
+    .meta-info {
+        width: 100%;
+    }
+
+    .video-wrapper.vertical {
+        max-width: 100%; /* Full width for vertical videos on mobile */
+    }
+  }
 </style>
 </head>
 <body>
@@ -338,7 +381,6 @@ function getYouTubeID(url) {
 }
 
 function getInstaID(url) {
-    // Matches /p/ID, /reel/ID, /tv/ID
     const regExp = /(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/;
     const match = url.match(regExp);
     return match ? match[1] : null;
@@ -360,7 +402,6 @@ async def transcribe_link(data: dict):
 
     try:
         # Step 1: Fetch Metadata
-        # yt-dlp works for Instagram too!
         print("Fetching metadata...")
         meta_process = subprocess.run([
             "yt-dlp",
